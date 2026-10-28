@@ -1,0 +1,8 @@
+PENTING: MIEFLOW sekarang memakai MULTI-USER.
+
+Jangan jalankan schema.sql / REPAIR-EXISTING.sql versi lama karena policy lama memakai using(true) dan membuat data semua akun tercampur.
+
+Jalankan:
+supabase/MIEFLOW-MULTI-USER-FIX.sql
+
+Setelah SQL selesai, redeploy Vercel dan logout/login kembali.

@@ -1,0 +1,117 @@
+/* Hand-written dark tweaks that the generator cannot infer. The color mapping itself lives in
+ * app/dark-theme.generated.css (see scripts/generate-dark-theme.mjs); this file loads after it. */
+
+html.dark ::selection {
+  color: #fff;
+  background: rgba(255,106,44,.45);
+}
+
+html.dark {
+  scrollbar-color: #2f3744 transparent;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #2f3744;
+  border-radius: 99px;
+}
+
+html.dark ::placeholder {
+  color: #6f7888;
+  opacity: 1;
+}
+
+/* Dark shadows are almost invisible on a dark page, so give raised cards a deeper one. */
+html.dark .cx-page,
+html.dark .st-page,
+html.dark .cx-pick-menu,
+html.dark .cx-modal {
+  --cx-shadow: 0 1px 2px rgba(0,0,0,.35),0 16px 36px -14px rgba(0,0,0,.6);
+  --cx-shadow-hover: 0 2px 4px rgba(0,0,0,.4),0 26px 50px -16px rgba(0,0,0,.75);
+}
+
+html.dark .st-card {
+  box-shadow: 0 1px 2px rgba(0,0,0,.35),0 16px 36px -14px rgba(0,0,0,.6);
+}
+
+/* The general-customer avatar and dish icons stay readable on dark surfaces. */
+html.dark .cx-avatar-general {
+  color: #aab3c2;
+  background: linear-gradient(145deg,#232a34,#1b2029);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+html.dark .cx-bar-tip {
+  background: #eef1f6;
+  color: #12161d;
+}
+
+/* Product photos keep their colors; only soften the glare a little. */
+html.dark img {
+  filter: brightness(.94);
+}
+
+/* Kasir: stock chips and hints need lighter hues on a dark card. */
+html.dark .ks-page {
+  --warn: #f5a524;
+}
+
+html.dark .ks-stock.good {
+  --sc: #3ddc97;
+}
+
+html.dark .ks-stock.low {
+  --sc: #f5a524;
+}
+
+html.dark .ks-stock.out {
+  --sc: #ff8585;
+}
+
+html.dark .ks-error {
+  color: #ff9a9a;
+}
+
+html.dark .ks-tile-step button {
+  box-shadow: none;
+}
+
+html.dark .ks-ticket {
+  box-shadow: 0 30px 70px -30px rgba(0,0,0,.8);
+}
+
+/* Overview hero: dark twin of the --hv-* tokens (the light values are in globals.css, .ov-hero). */
+html.dark .ov-hero {
+  --hv-ink: #fff;
+  --hv-mute: rgba(255,255,255,.64);
+  --hv-soft: rgba(255,255,255,.07);
+  --hv-line: rgba(255,255,255,.1);
+  --hv-axis: rgba(255,255,255,.45);
+  --hv-grid: rgba(255,255,255,.08);
+  --hv-prev: rgba(255,255,255,.45);
+  --hv-dot: #12161d;
+  --hv-up: #4be3a6;
+  --hv-up-bg: rgba(46,204,140,.14);
+  --hv-down: #ff8f8f;
+  --hv-down-bg: rgba(255,90,90,.14);
+  --hv-warn: #ffc15c;
+  --hv-area: .55;
+  --hv-pill-shadow: none;
+  border-color: transparent;
+  background:
+    radial-gradient(900px 380px at 100% -20%,rgba(255,122,69,.3),transparent 60%),
+    radial-gradient(620px 300px at -10% 120%,rgba(255,157,39,.14),transparent 60%),
+    linear-gradient(160deg,#151a23 0%,#0e1218 100%);
+  box-shadow: 0 30px 60px -32px rgba(8,12,20,.7);
+}
+
+/* Active pills of the hero stay white-on-dark (the generator would turn them into dark-on-dark). */
+html.dark .ov-tabs button.active,
+html.dark .ov-mini-seg button.active {
+  color: #141922;
+  background: #fff;
+}
+
+/* The chart tooltip is dark in both themes; keep its dashed swatch light. */
+html.dark .ov-chart-tip i.was {
+  border-color: rgba(255,255,255,.65);
+}

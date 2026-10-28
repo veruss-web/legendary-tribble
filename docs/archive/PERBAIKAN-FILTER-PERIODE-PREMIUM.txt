@@ -1,0 +1,14 @@
+PERBAIKAN FILTER PERIODE — MIEFLOW PREMIUM
+
+Yang diperbarui:
+- HP: pemilih periode sekarang tampil sebagai bottom sheet putih premium.
+- Tablet/Desktop: tampil sebagai dialog SaaS compact dengan overlay blur.
+- Radio button besar dihapus.
+- Pilihan aktif memakai indikator centang ungu premium.
+- Animasi buka/tutup menggunakan Framer Motion.
+- Pilihan tetap: Semua waktu, 24 jam terakhir, 7 hari terakhir, 30 hari terakhir.
+- Logika filter transaksi tetap menggunakan state dan data yang sama.
+
+File yang diubah:
+- app/page.tsx
+- app/globals.css
