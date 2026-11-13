@@ -2,11 +2,22 @@
 
 ## Unreleased
 
+### Cabang di Pengaturan, sidebar tanpa "Warung Mie", respons ketukan instan
+- **Pengaturan → Cabang** (`components/screens/settings.tsx`, `lib/branches.ts`, `app/cabang.css`): tiga tautan ke website **E-Commerce Pusat**, **Cabang 1**, dan **Cabang 2**, dibuka di tab baru. Website yang sedang dibuka ditandai "Sedang dibuka" (dikenali dari hostname). Alamat tiap website ada di satu tempat: `BRANCHES` di `lib/branches.ts`. Tes baru: `tests/branches.test.mjs` (74 → 78).
+- **Sidebar:** kartu "Warung Mie / Online • Secure" dihapus. Sidebar dipindah ke `components/dashboard/sidebar.tsx` (memo), jadi tidak ikut dirender ulang setiap ketukan di Kasir atau ketikan di kolom cari. Sapaan di Overview dan struk tetap memakai `NEXT_PUBLIC_STORE_NAME`.
+- **Lebih cepat dan responsif:**
+  - `app/fast.css` (dimuat terakhir): `touch-action: manipulation` (tanpa jeda ketuk di HP), tombol mengecil sedikit saat disentuh, transisi hover/warna ~0,12 dtk, `backdrop-filter` dimatikan di HP / layar sentuh dan pada elemen berulang (chip stok tiap kartu menu), `prefers-reduced-motion` dihormati.
+  - Pindah halaman dan pencarian memakai `useDeferredValue`: sorotan menu dan teks pencarian berubah seketika, layar berat digambar sesudahnya tanpa menahan ketukan berikutnya.
+  - Kasir: `MenuTile` di-memo dengan handler stabil, sehingga satu ketukan hanya merender ulang kartu yang berubah, bukan seluruh menu.
+  - Pemuatan data: produk, kategori, pelanggan, transaksi, dan item dimuat sekaligus (`Promise.all`), satu putaran jaringan, bukan dua.
+  - Foto menu memakai `decoding="async"`.
+
 ### Lupa password — kode verifikasi lewat email, form password baru yang modern
 - **Alur baru** (`components/auth/login.tsx`): client mengisi email → Supabase mengirim kode 6 digit → client mengetik kode di website (satu kotak per digit; boleh ditempel; kode lengkap langsung diperiksa) → form **Buat password baru** langsung muncul di halaman yang sama. Tidak ada link yang perlu dibuka.
 - **Form password baru dirombak:** indikator langkah (Email → Kode → Password), lencana "Kode terverifikasi" dengan email akun, meter kekuatan 4 segmen, daftar syarat yang menyala saat terpenuhi, petunjuk "Password cocok / belum sama" saat mengetik, tombol simpan aktif hanya bila valid, layar sukses sebelum masuk dashboard, dan tombol **Batalkan** yang mengakhiri sesi di browser ini saja (`signOut({ scope: 'local' })`, bukan semua perangkat). Kolom memakai `autocomplete` yang benar (`email`, `current-password`, `new-password`, `one-time-code`) agar password manager bekerja.
 - **Kirim ulang kode** dengan hitung mundur 60 detik. Bila Supabase membalas "terlalu sering" (kode baru saja dikirim), client tetap diarahkan ke kotak kode dan bisa mengetik kode sebelumnya.
 - **Tanpa kilatan dashboard:** memverifikasi kode berarti login, jadi `app/page.tsx` menandai mode reset *sebelum* memeriksa kode dan menyimpannya di `sessionStorage` (reload tetap di form password baru; tanda dibersihkan bila sesi kosong atau keluar, sehingga login biasa berikutnya tidak salah masuk ke form ini). Link reset dari template lama tetap bekerja (event `PASSWORD_RECOVERY`).
+- **Email kode tampil modern** (`supabase/email-templates/recovery.html`): logo Mieflow, judul besar, kode 6 digit di kartu (satu angka utuh, mudah disalin; polanya mengikuti email kode standar agar Gmail bisa menampilkan kartu "Copy code"), catatan keamanan, tanpa link sama sekali, rapi di ponsel dan mendukung mode gelap. Subject disarankan `Kode verifikasi Mieflow`. Ada juga `recovery-compact.html`, versi ringkas (1,8 KB) yang mudah ditempel dari HP.
 - **Wajib per project Supabase: ganti template email "Reset Password"** dengan `supabase/email-templates/recovery.html` (memuat `{{ .Token }}`). Langkah dan opsi (OTP expiration / length) ada di `docs/CLIENT-ONBOARDING.md`. Tanpa ini email masih berisi link lama dan tidak ada kode.
 - Logika murni baru yang dites: `lib/auth.ts` (`cleanCode` mempertahankan angka nol di depan, `passwordChecks`, `passwordStrength`, `formatCountdown`, `throttleSeconds`, `friendlyAuthError`; yang terakhir dipindah dari `login.tsx` dan diperluas: kode salah / kedaluwarsa, password sama dengan yang lama, password lemah, sesi berakhir, koneksi). Tes: 68 → 74.
 - CSS baru berawalan `rc-` di akhir `globals.css` (mode gelap dibuat ulang lewat `npm run theme:build`). Tautan "Lupa password?" dibesarkan dari 9px ke 13px agar mudah ditemukan.

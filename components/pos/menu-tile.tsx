@@ -3,19 +3,20 @@
 /** One menu item of Kasir. The photo carries the live stock chip; the footer holds the price and either an add button or,
  *  once the item is in the order, a − / qty / + stepper. `stock` is what is still sellable right now (already corrected for
  *  reservations that are in flight), so the number on the tile always matches what a tap will really do. */
+import { memo } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { money } from '@/lib/format';
 import { LOW_STOCK } from '@/lib/inventory';
 import { stockLevel } from '@/lib/pos';
 import type { Product } from '@/lib/types';
 
-export function MenuTile({product:p,qty,stock,onAdd,onMinus}:{product:Product;qty:number;stock:number;onAdd:(product:Product)=>void;onMinus:(product:Product)=>void}){
+function MenuTileView({product:p,qty,stock,onAdd,onMinus}:{product:Product;qty:number;stock:number;onAdd:(product:Product)=>void;onMinus:(product:Product)=>void}){
  const level=stockLevel(stock,LOW_STOCK);
  const out=level==='out';
  return <article className={`ks-tile ${qty>0?'in':''} ${out?'out':''}`} data-stock={level}>
   <button type="button" className="ks-tile-main" disabled={out} onClick={()=>onAdd(p)} aria-label={out?`${p.name} habis`:`Tambah ${p.name}, ${money(Number(p.price))}, stok ${stock}`}>
    <span className="ks-tile-media">
-    {p.image_url?<img src={p.image_url} alt="" loading="lazy"/>:<span className="ks-tile-emoji" aria-hidden="true">🍜</span>}
+    {p.image_url?<img src={p.image_url} alt="" loading="lazy" decoding="async"/>:<span className="ks-tile-emoji" aria-hidden="true">🍜</span>}
     <span className={`ks-stock ${level}`} aria-live="polite"><i aria-hidden="true"/>{out?'Habis':`Stok ${stock}`}</span>
    </span>
    <span className="ks-tile-info"><small>{p.categories?.name||'Menu'}</small><b>{p.name}</b></span>
@@ -32,3 +33,6 @@ export function MenuTile({product:p,qty,stock,onAdd,onMinus}:{product:Product;qt
   </div>
  </article>
 }
+
+/** Memoized: with stable `onAdd` / `onMinus` a tile re-renders only when its own product, quantity or stock changes. */
+export const MenuTile=memo(MenuTileView);

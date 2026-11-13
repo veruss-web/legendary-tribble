@@ -1,15 +1,15 @@
 'use client';
 
 /** Application shell: data loading, realtime sync, CRUD handlers, notifications, sidebar and top bar. */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, Check, CheckCircle2, ChevronDown, ChevronRight, LogOut, Maximize2, Menu, Minimize2, Moon, Plus, Search, Settings, Sun, X } from 'lucide-react';
+import { Bell, Check, CheckCircle2, ChevronDown, ChevronRight, Maximize2, Menu, Minimize2, Moon, Plus, Search, Sun, X } from 'lucide-react';
 import { Settings as SettingsScreen } from '@/components/screens/settings';
-import { RECEIPT_STORE } from '@/lib/store';
 import { applyTheme, readStoredTheme, resolveTheme, storeTheme, systemPrefersDark, type ThemeMode } from '@/lib/theme';
 import { ensureFreshSession, friendlySupabaseError, runWithAuthRetry, supabase } from '@/lib/supabase';
 import { GlobalSearchResults } from '@/components/dashboard/global-search';
+import { Sidebar } from '@/components/dashboard/sidebar';
 import { Analytics } from '@/components/screens/analytics';
 import { Categories } from '@/components/screens/categories';
 import { Customers } from '@/components/screens/customers';
@@ -24,7 +24,7 @@ import type { ModalType } from '@/components/shared/modal';
 import { isCustomerOrderComplete } from '@/lib/customers';
 import { money } from '@/lib/format';
 import { levelOf } from '@/lib/inventory';
-import { nav, pageDescription, pageTitle } from '@/lib/navigation';
+import { pageDescription, pageTitle } from '@/lib/navigation';
 import { uploadImageDataUrl } from '@/lib/product-images';
 import type { AppNotification, CartItem, Category, Customer, Order, OrderItem, Page, Product, ProductInput, Receipt } from '@/lib/types';
 
@@ -37,6 +37,10 @@ export function Dashboard({session}:{session:Session}){
  // Kanal realtime membaca pelanggan lewat ref supaya tidak berhenti-langganan/berlangganan ulang setiap daftar pelanggan berubah.
  const customersRef=useRef(customers);
  customersRef.current=customers;
+ // Tapping a menu item or typing in the search box is urgent; drawing the next screen / filtering a long list is not.
+ // React paints the sidebar highlight and the search text at once and renders the heavy part right after, without blocking the next tap.
+ const shownPage=useDeferredValue(page);
+ const dq=useDeferredValue(query);
  useEffect(()=>{
   if(typeof document==='undefined') return;
   document.body.style.overflow=mobile?'hidden':'';
@@ -49,27 +53,26 @@ export function Dashboard({session}:{session:Session}){
    const sessionNow=await ensureFreshSession();
    if(!sessionNow){setError('Sesi login tidak ditemukan. Silakan masuk kembali.');return;}
 
-   // Produk adalah data inti. Modul lain tidak boleh membuat halaman Products ikut mati.
-   const productsResult=await runWithAuthRetry(()=>supabase.from('products').select('*').eq('owner_id',sessionNow.user.id).order('created_at',{ascending:false}));
-   if(productsResult.error) throw productsResult.error;
-   setProducts((productsResult.data||[]) as Product[]);
-
-   // Data pendukung dimuat terpisah dan boleh kosong jika modulnya belum dibuat.
-   const [categoriesResult,customersResult,ordersResult,orderItemsResult]=await Promise.all([
-    runWithAuthRetry(()=>supabase.from('categories').select('*').eq('owner_id',sessionNow.user.id).order('name')),
-    runWithAuthRetry(()=>supabase.from('customers').select('*').eq('owner_id',sessionNow.user.id).order('created_at',{ascending:false})),
-    runWithAuthRetry(()=>supabase.from('orders').select('*').eq('owner_id',sessionNow.user.id).order('created_at',{ascending:false}).limit(1000)),
-    runWithAuthRetry(()=>supabase.from('order_items').select('*').eq('owner_id',sessionNow.user.id).limit(5000))
+   // Semua tabel dimuat sekaligus (satu putaran jaringan, bukan dua). Produk tetap data inti: gagal -> error;
+   // modul pendukung boleh kosong jika modulnya belum dibuat dan tidak membuat halaman Products ikut mati.
+   const uid=sessionNow.user.id;
+   const [productsResult,categoriesResult,customersResult,ordersResult,orderItemsResult]=await Promise.all([
+    runWithAuthRetry(()=>supabase.from('products').select('*').eq('owner_id',uid).order('created_at',{ascending:false})),
+    runWithAuthRetry(()=>supabase.from('categories').select('*').eq('owner_id',uid).order('name')),
+    runWithAuthRetry(()=>supabase.from('customers').select('*').eq('owner_id',uid).order('created_at',{ascending:false})),
+    runWithAuthRetry(()=>supabase.from('orders').select('*').eq('owner_id',uid).order('created_at',{ascending:false}).limit(1000)),
+    runWithAuthRetry(()=>supabase.from('order_items').select('*').eq('owner_id',uid).limit(5000))
    ]);
+   if(productsResult.error) throw productsResult.error;
    const categoryRows=(categoriesResult.data||[]) as Category[];
    const customerRows=(customersResult.data||[]) as Customer[];
    const orderRows=(ordersResult.data||[]) as Order[];
    const orderItemRows=(orderItemsResult.data||[]) as OrderItem[];
-   setCategories(categoryRows);
-   setCustomers(customerRows);
    const categoryMap=new Map(categoryRows.map(x=>[x.id,x]));
    const customerMap=new Map(customerRows.map(x=>[x.id,x]));
-   setProducts(current=>current.map(x=>({...x,categories:x.category_id?categoryMap.get(x.category_id)||null:null})));
+   setCategories(categoryRows);
+   setCustomers(customerRows);
+   setProducts(((productsResult.data||[]) as Product[]).map(x=>({...x,categories:x.category_id?categoryMap.get(x.category_id)||null:null})));
    setOrders(orderRows.map(x=>({...x,customers:x.customer_id?customerMap.get(x.customer_id)||null:null})));
    setOrderItems(orderItemRows);
 
@@ -287,7 +290,10 @@ export function Dashboard({session}:{session:Session}){
  const openModal=(type:ModalType,item:Category|Customer|null=null)=>{setEditing(item);setModal(type)};
  const openProductForm=(product:Product|null=null)=>{setProductForm({product});setModal(null);setEditing(null);setNotificationsOpen(false)};
  const updateStock=(id:string,stock:number)=>setProducts(prev=>prev.map(p=>p.id===id?{...p,stock}:p));
- const go=(p:Page)=>{setPage(p);setProductForm(null);setQuery('');if(typeof window!=='undefined'&&window.innerWidth<=900)setMobile(false)};
+ // Stable identities (only state setters inside): the memoized Sidebar never re-renders because of a tap in Kasir.
+ const go=useCallback((p:Page)=>{setPage(p);setProductForm(null);setQuery('');if(typeof window!=='undefined'&&window.innerWidth<=900)setMobile(false)},[]);
+ const closeSidebar=useCallback(()=>setMobile(false),[]);
+ const signOut=useCallback(()=>{supabase.auth.signOut()},[]);
  const openOrder=(order:Order)=>{setSelectedOrder(order);setNotificationsOpen(false);go('Orders')};
  const handleNotificationClick=(n:any)=>{
    // Tetap di halaman saat ini. Detail transaksi dibuka sebagai modal premium.
@@ -296,9 +302,9 @@ export function Dashboard({session}:{session:Session}){
    setSelectedNotification({...n});
  };
  const searchPlaceholders:any={Overview:'Cari produk, pelanggan, atau transaksi…',POS:'Cari produk untuk kasir…',Orders:'Cari nomor order, pelanggan, atau status…',Analytics:'Cari data analisa…',Products:'Cari produk, kategori, atau stok…',Categories:'Cari kategori…',Customers:'Cari nama, telepon, atau email…',Inventory:'Cari produk atau kategori…',Settings:'Cari pengaturan…'};
- const filteredProducts=products.filter(p=>{const q=query.trim().toLowerCase();const hay=[p.name,p.description||'',p.categories?.name||'',String(p.stock),String(p.price)].join(' ').toLowerCase();return !q||hay.includes(q)});
+ const filteredProducts=products.filter(p=>{const q=dq.trim().toLowerCase();const hay=[p.name,p.description||'',p.categories?.name||'',String(p.stock),String(p.price)].join(' ').toLowerCase();return !q||hay.includes(q)});
  const pendingKasirCustomers=useMemo(()=>customers.filter(c=>!isCustomerOrderComplete(c,orders,orderItems,products)),[customers,orders,orderItems,products]);
- const q=query.trim();
+ const q=dq.trim();
  // Setelah pembayaran: jangan reload seluruh dashboard (layar berkedip "Memuat data toko").
  // Sinkronkan hanya yang berubah: transaksi baru, item pesanan, dan notifikasi.
  const handleSaleDone=(receipt:Receipt,_soldItems:CartItem[],newOrderItems:OrderItem[]=[])=>{
@@ -331,21 +337,21 @@ export function Dashboard({session}:{session:Session}){
   :n.page!=='Orders'&&n.page!=='Inventory');
  const renderPage=()=>{
   if(productForm)return <ProductForm key={productForm.product?.id||'new'} product={productForm.product} categories={categories} onCancel={()=>setProductForm(null)} onSubmit={saveProduct}/>;
-  if(q&&(page==='Overview'||page==='Analytics'||page==='Settings'))return <GlobalSearchResults query={q} products={products} customers={customers} categories={categories} orders={orders} go={go}/>;
+  if(q&&(shownPage==='Overview'||shownPage==='Analytics'||shownPage==='Settings'))return <GlobalSearchResults query={q} products={products} customers={customers} categories={categories} orders={orders} go={go}/>;
   if(loading)return <div className="loading"><div className="spinner"/> Memuat data toko…</div>;
-  switch(page){
+  switch(shownPage){
    case 'Overview':return <Overview products={products} orders={orders} orderItems={orderItems} go={go} onOpenOrder={openOrder} onAddProduct={()=>openProductForm()}/>;
-   case 'POS':return <POS products={products} categories={categories} customers={pendingKasirCustomers} query={query} cart={cart} onCartChange={setCart} onStockChange={updateStock} onDone={handleSaleDone}/>;
+   case 'POS':return <POS products={products} categories={categories} customers={pendingKasirCustomers} query={dq} cart={cart} onCartChange={setCart} onStockChange={updateStock} onDone={handleSaleDone}/>;
    case 'Products':return <Products products={filteredProducts} onEdit={openProductForm} onDelete={id=>remove('products',id)}/>;
-   case 'Categories':return <Categories categories={categories} products={products} query={query} onAdd={()=>openModal('category')} onEdit={x=>openModal('category',x)} onDelete={id=>remove('categories',id)}/>;
-   case 'Customers':return <Customers customers={customers} orders={orders} orderItems={orderItems} products={products} query={query} onEdit={(x:Customer)=>openModal('customer',x)} onDelete={(id:string)=>remove('customers',id)}/>;
-   case 'Orders':return <Orders orders={orders} orderItems={orderItems} query={query} onOpen={openOrder}/>;
-   case 'Inventory':return <Inventory products={products} categories={categories} onError={setError} query={query} onStockChange={updateStock} onAdd={()=>openProductForm()} onDelete={id=>remove('products',id)}/>;
+   case 'Categories':return <Categories categories={categories} products={products} query={dq} onAdd={()=>openModal('category')} onEdit={x=>openModal('category',x)} onDelete={id=>remove('categories',id)}/>;
+   case 'Customers':return <Customers customers={customers} orders={orders} orderItems={orderItems} products={products} query={dq} onEdit={(x:Customer)=>openModal('customer',x)} onDelete={(id:string)=>remove('customers',id)}/>;
+   case 'Orders':return <Orders orders={orders} orderItems={orderItems} query={dq} onOpen={openOrder}/>;
+   case 'Inventory':return <Inventory products={products} categories={categories} onError={setError} query={dq} onStockChange={updateStock} onAdd={()=>openProductForm()} onDelete={id=>remove('products',id)}/>;
    case 'Analytics':return <Analytics orders={orders} orderItems={orderItems} products={products}/>;
    case 'Settings':return <SettingsScreen email={session.user.email||''} theme={theme} resolvedTheme={resolvedTheme} onThemeChange={changeTheme} onSignOut={()=>supabase.auth.signOut()}/>;
   }
  };
 
- return <main className="shell"><AnimatePresence>{mobile&&<motion.button className="backdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={()=>setMobile(false)}/>}</AnimatePresence><aside className={mobile?'sidebar open':'sidebar'}><div className="brand"><div className="brand-logo">M</div><div><b>MIEFLOW</b><small>BUSINESS POS</small></div><button className="mobile-close" onClick={()=>setMobile(false)}><X/></button></div><div className="store-card"><span className="live-dot"/><div><b>{RECEIPT_STORE.name}</b><small>Online • Secure</small></div></div><nav>{nav.map(([label,key,Icon])=><button key={key} className={page===key?'active':''} onClick={()=>go(key)}><Icon size={18}/><span>{label}</span></button>)}</nav><div className="side-bottom"><button onClick={()=>go('Settings')}><Settings size={18}/>Pengaturan</button><button className="logout" onClick={()=>supabase.auth.signOut()}><LogOut size={18}/>Keluar</button><div className="user"><div>{(session.user.email||'A')[0].toUpperCase()}</div><span><b>{session.user.email}</b><small>Authenticated</small></span></div></div></aside>
+ return <main className="shell"><AnimatePresence>{mobile&&<motion.button className="backdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={()=>setMobile(false)}/>}</AnimatePresence><Sidebar page={page} open={mobile} email={session.user.email||''} onGo={go} onClose={closeSidebar} onSignOut={signOut}/>
  <section className="main">{notificationFlash&&<AnimatePresence><motion.div className="notification-flash" initial={{opacity:0,y:-18,scale:.96}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-12,scale:.97}} transition={{duration:.22}} role="status"><div className={`notification-flash-icon ${notificationFlash.type}`}>{noticeGlyph(notificationFlash.type)}</div><div className="notification-flash-copy"><span>{notificationFlash.type==='success'?'PAYMENT CONFIRMED':'NOTIFIKASI BARU'}</span><b>{notificationFlash.title}</b><small>{notificationFlash.detail}</small><button className="notification-flash-action" onClick={()=>setNotificationFlash(null)}>Mengerti <CheckCircle2 size={13}/></button></div><button className="notification-flash-close" onClick={()=>setNotificationFlash(null)} aria-label="Tutup notifikasi"><X size={15}/></button></motion.div></AnimatePresence>}<header className={`${page==='POS'?'topbar pos-topbar':'topbar'}${page==='Overview'?' overview-topbar':''}`}><button className="hamb" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">{page==='POS'?<b>Kasir / POS</b>:<>Workspace <ChevronRight size={14}/><b>{pageTitle(page)}</b></>}</div><div className="top-actions"><label className="global-search universal-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={searchPlaceholders[page]||'Cari data…'} aria-label={`Pencarian ${pageTitle(page)}`}/><button type="button" className="global-search-clear" onClick={()=>setQuery('')} aria-label="Hapus pencarian" style={{display:query?'grid':'none'}}>×</button></label><button type="button" className="top-icon theme-toggle" data-theme={resolvedTheme} onClick={toggleTheme} aria-label={resolvedTheme==='dark'?'Beralih ke mode terang':'Beralih ke mode gelap'} aria-pressed={resolvedTheme==='dark'} title={resolvedTheme==='dark'?'Mode terang':'Mode gelap'}><Sun className="theme-sun" size={19}/><Moon className="theme-moon" size={19}/></button><div className="notification-wrap"><button onClick={()=>setNotificationsOpen(v=>!v)} className="top-icon top-bell" aria-label="Notifikasi"><span>{unreadNotifications>99?"99+":unreadNotifications}</span><Bell size={19}/></button>{notificationsOpen&&<div className="notification-panel"><div className="notification-head"><div><b>Notifikasi</b><small>{notifications.length?`${notifications.length} aktivitas penting`:"Semua aman"}</small></div><button onClick={markNotificationsRead} disabled={!unreadNotifications}>Tandai dibaca</button></div><div className="notification-filters">{[['all','Semua'],['unread','Belum dibaca'],['transactions','Transaksi'],['stock','Stok'],['activity','Aktivitas']].map(([key,label])=><button key={key} className={notificationFilter===key?'active':''} onClick={()=>setNotificationFilter(key as any)}>{label}</button>)}</div><div className="notification-list">{visibleNotifications.length?visibleNotifications.map(n=><button key={n.id} className={`notification-item ${readNotificationIds.includes(n.id)?'read':''}`} onClick={()=>handleNotificationClick(n)}><i className={`notification-icon ${n.type}`}>{noticeGlyph(n.type)}</i><span><b>{n.title}</b><small>{n.detail}</small><em>{n.time}</em></span><ChevronRight size={14} className="notification-arrow"/></button>):<div className="notification-empty"><CheckCircle2 size={22}/><b>Tidak ada notifikasi</b><span>Tidak ada aktivitas pada filter ini.</span></div>}</div></div>}</div>{page==='Overview'&&<button className="pos-fullscreen overview-fullscreen" type="button" aria-label={isFullscreen?'Perkecil layar':'Perbesar layar'} title={isFullscreen?'Perkecil layar':'Perbesar layar'} onClick={async()=>{try{if(document.fullscreenElement){await document.exitFullscreen?.()}else{await document.documentElement.requestFullscreen?.()}}catch(e){console.warn('Fullscreen tidak tersedia',e)}}}>{isFullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}</button>}<div className="top-admin"><div className="top-admin-avatar">A</div><div><b>Admin</b><small>Owner</small></div><ChevronDown size={15}/></div></div></header><div className="content">{error&&<div className="error"><span>{error}</span><button onClick={()=>setError('')}><X size={16}/></button></div>}{productForm||page==='Overview'||page==='POS'?null:<div className="page-title"><div><span className="eyebrow">MIEFLOW / {new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</span><h1>{pageTitle(page)}</h1><p>{pageDescription(page)}</p></div>{['Products','Categories','Customers'].includes(page)&&<button className="primary" onClick={()=>page==='Products'?openProductForm():openModal(page==='Categories'?'category':'customer')}><Plus size={17}/> Tambah</button>}</div>}{renderPage()}</div></section>
  <AnimatePresence>{selectedOrder&&<OrderDetailModal order={selectedOrder} items={orderItems.filter(i=>i.order_id===selectedOrder.id)} onClose={()=>setSelectedOrder(null)}/>} {modal&&<Modal type={modal} initial={editing} categories={categories} products={products} onClose={()=>{setModal(null);setEditing(null)}} onSave={saveModal}/>}</AnimatePresence>{selectedNotification&&<AnimatePresence><motion.div className="notification-detail-backdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={()=>setSelectedNotification(null)}><motion.section className="notification-detail-modal" initial={{opacity:0,y:18,scale:.97}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:12,scale:.98}} onClick={e=>e.stopPropagation()}><div className={`notification-detail-icon ${selectedNotification.type||'info'}`}>{noticeGlyph(selectedNotification.type)}</div><button className="notification-detail-close" onClick={()=>setSelectedNotification(null)} aria-label="Tutup detail notifikasi"><X size={18}/></button><span className="notification-detail-eyebrow">{selectedNotification.type==='success'?'TRANSACTION CONFIRMED':'NOTIFICATION DETAIL'}</span><h2>{selectedNotification.title}</h2><p>{selectedNotification.detail}</p><div className="notification-detail-meta"><div><small>WAKTU</small><b>{selectedNotification.time||'Baru saja'}</b></div><div><small>STATUS</small><b>{selectedNotification.type==='success'?'Berhasil':'Tercatat'}</b></div></div><div className="notification-detail-note"><CheckCircle2 size={17}/><span>Notifikasi telah dibuka dan ditandai sebagai sudah dibaca. Anda tetap berada di halaman saat ini.</span></div><button className="notification-detail-action" onClick={()=>setSelectedNotification(null)}>Selesai <Check size={16}/></button></motion.section></motion.div></AnimatePresence>}{deleteConfirm&&<DeleteConfirmDialog data={deleteConfirm} onCancel={()=>setDeleteConfirm(null)} onConfirm={confirmRemove}/>}{toast&&<motion.div className="toast" initial={{y:20,opacity:0}} animate={{y:0,opacity:1}}><Check size={17}/>{toast}</motion.div>}</main>}

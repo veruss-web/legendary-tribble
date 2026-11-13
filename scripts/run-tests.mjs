@@ -13,7 +13,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, '.test-build');
 
 // Only modules without React / Supabase / browser dependencies belong here.
-const PURE_MODULES = ['lib/auth.ts', 'lib/customers.ts', 'lib/format.ts', 'lib/theme.ts', 'lib/products.ts', 'lib/inventory.ts', 'lib/payments.ts', 'lib/overview.ts', 'lib/pos.ts', 'lib/analytics.ts', 'lib/chart-path.ts'];
+const PURE_MODULES = ['lib/auth.ts', 'lib/customers.ts', 'lib/format.ts', 'lib/theme.ts', 'lib/products.ts', 'lib/inventory.ts', 'lib/payments.ts', 'lib/overview.ts', 'lib/pos.ts', 'lib/analytics.ts', 'lib/chart-path.ts', 'lib/branches.ts'];
 
 rmSync(out, { recursive: true, force: true });
 for (const file of PURE_MODULES) {

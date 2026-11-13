@@ -1,8 +1,9 @@
 'use client';
 
-/** Settings: appearance (light / dark / system) and the signed-in account. */
-import { Check, LogOut, Monitor, Moon, Palette, ShieldCheck, Sun } from 'lucide-react';
+/** Settings: appearance (light / dark / system), the websites of the central store and its branches, and the signed-in account. */
+import { Building2, Check, ExternalLink, LogOut, Monitor, Moon, Palette, ShieldCheck, Store, Sun } from 'lucide-react';
 import { CustomerAvatar } from '@/components/shared/avatar';
+import { BRANCHES, currentBranch, hostOf } from '@/lib/branches';
 import type { ResolvedTheme, ThemeMode } from '@/lib/theme';
 
 const OPTIONS: { mode: ThemeMode; label: string; note: string; icon: typeof Sun }[] = [
@@ -30,6 +31,8 @@ export function Settings({ email, theme, resolvedTheme, onThemeChange, onSignOut
   email: string; theme: ThemeMode; resolvedTheme: ResolvedTheme; onThemeChange: (mode: ThemeMode) => void; onSignOut: () => void;
 }) {
   const active = OPTIONS.find((o) => o.mode === theme) || OPTIONS[0];
+  // This screen only renders after sign-in (client side), so reading the address bar here is safe.
+  const here = currentBranch(typeof window === 'undefined' ? '' : window.location.hostname);
   return <div className="st-page">
     <section className="st-hero">
       <span className="st-eyebrow"><Palette size={13}/> Personalisasi</span>
@@ -56,6 +59,27 @@ export function Settings({ email, theme, resolvedTheme, onThemeChange, onSignOut
         })}
       </div>
       <p className="st-hint">Anda juga bisa mengganti tema kapan saja lewat tombol matahari/bulan di bilah atas. Pilihan saat ini: <b>{active.label}</b>.</p>
+    </section>
+
+    <section className="st-card">
+      <div className="st-card-head">
+        <div><span className="st-kicker">Cabang</span><h3>Website pusat dan cabang</h3></div>
+        <span className="st-status"><Store size={14}/> <b>{BRANCHES.length}</b> website</span>
+      </div>
+      <div className="br-list">
+        {BRANCHES.map((b) => {
+          const open = b.id === here?.id;
+          const body = <>
+            <span className="br-icon">{b.id === 'pusat' ? <Building2 size={20}/> : <Store size={20}/>}</span>
+            <span className="br-copy"><b>{b.name}</b><small>{hostOf(b.url)}</small></span>
+            {open ? <span className="br-badge"><i/>Sedang dibuka</span> : <span className="br-go"><ExternalLink size={16}/></span>}
+          </>;
+          return open
+            ? <div key={b.id} className="br-card here" aria-current="true">{body}</div>
+            : <a key={b.id} className="br-card" href={b.url} target="_blank" rel="noopener noreferrer" aria-label={`Buka ${b.name} di tab baru`}>{body}</a>;
+        })}
+      </div>
+      <p className="st-hint">Ketuk salah satu untuk membuka websitenya di tab baru.</p>
     </section>
 
     <section className="st-card st-account">

@@ -1,0 +1,89 @@
+/* ==========================================================================
+   fast.css — respons ketukan instan. Dimuat paling akhir (app/layout.tsx), jadi menang atas aturan lama tanpa menyentuh globals.css
+   (dark-theme.generated.css dibuat dari globals.css; file ini tidak ikut digenerate dan tidak berisi warna).
+   1. Tidak ada jeda ketuk: touch-action: manipulation menghapus penantian double-tap-zoom di HP.
+   2. Umpan balik di jari: tombol mengecil sedikit begitu disentuh (:active), tanpa menunggu transisi.
+   3. Transisi singkat: hover / warna / bayangan selesai dalam ~0,12 dtk, bukan 0,25-0,4 dtk.
+   4. Lebih ringan dilukis: backdrop-filter (blur kaca) dimatikan di HP / layar sentuh dan pada elemen yang berulang
+      (chip stok di setiap kartu menu); animasi dimatikan bila sistem meminta reduced motion.
+   ========================================================================== */
+
+/* 1. no tap delay, no grey flash on tap */
+a,
+button,
+summary,
+label,
+select,
+[role="button"],
+[role="tab"],
+[role="radio"],
+[role="checkbox"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 2. pressed feedback. `scale` is its own property, so it never replaces a `transform` an element already has. */
+:where(button, [role="tab"], [role="radio"], a.br-card):not(:disabled):active {
+  scale: .965;
+  transition-duration: .05s !important;
+}
+
+/* large blocks (whole menu tile photo, big rows) should not visibly shrink */
+:where(.ks-tile-main, .backdrop, .ks-scrim, .modal-backdrop, .delete-overlay):active {
+  scale: 1;
+}
+
+/* 3. short transitions on everything that is tapped or hovered (theme-switching keeps its own, longer cross-fade) */
+:where(a, button, [role="tab"], [role="radio"], input, select, textarea, .ks-tile, .br-card) {
+  transition-duration: .12s !important;
+}
+
+/* the mobile drawer and the sheets keep a slightly longer slide so they still read as motion */
+.sidebar,
+.ks-side,
+.ks-ticket,
+.notification-panel {
+  transition-duration: .2s !important;
+}
+
+/* 4a. glass blur is the most expensive thing to paint on phones and tablets: use the (already translucent) plain color instead */
+@media (hover: none), (pointer: coarse), (max-width: 900px) {
+  *,
+  *::before,
+  *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* 4b. repeated small elements (one per menu tile / stat card) never blur, even on desktop */
+.ks-stock,
+.catalog-summary > div,
+.catalog-stock-float,
+.cx-hero-stats > div,
+.iv-hero-stats > div,
+.cx-eyebrow,
+.iv-eyebrow {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 4c. people who asked the system for less motion get no animation */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

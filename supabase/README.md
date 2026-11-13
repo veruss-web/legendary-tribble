@@ -7,7 +7,7 @@
 | `migrations/002_notifications.sql` | Creates the `notifications` table, which older copies of `schema.sql` did not include | Existing project where the notification center does not persist |
 | `migrations/003_pos_stock_immediate.sql` | Adds `adjust_product_stock` (Kasir reserves stock the moment an item is added) and the matching `create_sale` that does not decrement or re-check stock | Existing project where checkout answers "Stok … tidak mencukupi" for an order that is larger than the remaining stock |
 | `migrations/004_realtime_catalog.sql` | Adds products, categories, orders and order_items to the `supabase_realtime` publication | Existing project where changes from another device only show after a refresh |
-| `email-templates/recovery.html` | "Reset Password" email that carries the 6-digit code (`{{ .Token }}`) the client types on the site | Every Supabase project, once: paste it in Authentication → Emails → Templates → Reset password (see `docs/CLIENT-ONBOARDING.md`) |
+| `email-templates/recovery.html`, `recovery-compact.html` | "Reset Password" email that carries the 6-digit code (`{{ .Token }}`) the client types on the site: full design with dark mode, and a short version that is easy to paste from a phone | Every Supabase project, once: paste one of them in Authentication → Emails → Templates → Reset password (see `docs/CLIENT-ONBOARDING.md`) |
 | `legacy/` | Archived earlier scripts (`schema-v5-original.sql`, `APPLY-FINAL-FIX.sql`) | Never, reference only |
 
 Migrations are idempotent and numbered in the order they should be applied. `schema.sql` already contains everything migrations 001–003 do, so a new project does not need them.

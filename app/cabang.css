@@ -1,0 +1,116 @@
+/* Pengaturan -> kartu "Cabang": tautan ke website pusat dan tiap cabang. Hanya memakai variabel tema (--ink, --muted, --line, --surface),
+   jadi mode gelap ikut otomatis; hanya warna aksen hijau yang punya penyesuaian gelap. */
+.br-list {
+  display: grid;
+  gap: 10px;
+}
+
+.br-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 14px 16px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ink) 3%, var(--surface));
+  border: 1px solid var(--line);
+  transition: border-color .12s ease, background-color .12s ease;
+}
+
+a.br-card:hover {
+  border-color: rgba(255, 90, 44, .5);
+  background: rgba(255, 90, 44, .06);
+}
+
+a.br-card:focus-visible {
+  outline: 2px solid #ff5a2c;
+  outline-offset: 2px;
+}
+
+.br-card.here {
+  border-color: rgba(34, 197, 94, .45);
+  background: rgba(34, 197, 94, .07);
+}
+
+.br-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: #ff5a2c;
+  border-radius: 14px;
+  background: rgba(255, 90, 44, .12);
+}
+
+.br-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.br-copy b {
+  display: block;
+  font: 800 15px Manrope, sans-serif;
+}
+
+.br-copy small {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.br-go {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+  border-radius: 11px;
+  border: 1px solid var(--line);
+}
+
+a.br-card:hover .br-go {
+  color: #ff5a2c;
+  border-color: rgba(255, 90, 44, .45);
+}
+
+.br-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  color: #0f8a5c;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, .14);
+  font: 800 11.5px Manrope, sans-serif;
+}
+
+.br-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+html.dark .br-badge {
+  color: #4be3a6;
+}
+
+@media (max-width: 480px) {
+  .br-card {
+    padding: 12px 13px;
+    gap: 12px;
+  }
+
+  .br-badge {
+    padding: 5px 9px;
+  }
+}

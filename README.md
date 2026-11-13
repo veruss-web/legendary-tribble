@@ -15,6 +15,7 @@ Built with **Next.js (App Router), React, TypeScript and Supabase**.
 - Analytics: revenue trend, top products, category breakdown, custom periods
 - Customer order targets and fulfilment tracking
 - Notification center (persisted per user), universal search, responsive layout for phone, tablet and desktop
+- Settings: light / dark / system theme and links to the central e-commerce site and the branch websites (`lib/branches.ts`)
 - Multi-user: every record has an `owner_id`; Row Level Security keeps each account's data private
 
 ## Technology

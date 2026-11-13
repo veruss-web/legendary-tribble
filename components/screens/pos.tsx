@@ -7,7 +7,7 @@
  *  `pending` holds the stock change of calls that are still on their way, and every stock number on screen is
  *  `database stock + pending`; when a call answers, the database value replaces the guess, and a rejected call rolls its tap back.
  *  Paying is blocked while any call is open, so a portion that was never reserved can not be sold. */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ChevronRight, Search, ShoppingBag } from 'lucide-react';
@@ -107,6 +107,11 @@ export function POS({products,categories,customers,query,cart,onCartChange:setCa
   const line=cart.find(x=>x.id===p.id);
   if(line)give(line,1);
  };
+ /** Stable handlers for the memoized tiles: they always call the latest `add` / `minusProduct`, so a tap re-renders only the tile that changed instead of the whole menu. */
+ const addRef=useRef(add),minusRef=useRef(minusProduct);
+ addRef.current=add;minusRef.current=minusProduct;
+ const addTile=useCallback((p:Product)=>addRef.current(p),[]);
+ const minusTile=useCallback((p:Product)=>minusRef.current(p),[]);
  /** Empties the order and returns every reserved portion. */
  const clearOrder=()=>{
   const lines=cart;
@@ -157,7 +162,7 @@ export function POS({products,categories,customers,query,cart,onCartChange:setCa
     </button>)}
    </div>
    {visible.length
-    ?<div className="ks-grid">{visible.map(p=><MenuTile key={p.id} product={p} qty={quantities.get(p.id)||0} stock={stockOf(p.id)} onAdd={add} onMinus={minusProduct}/>)}</div>
+    ?<div className="ks-grid">{visible.map(p=><MenuTile key={p.id} product={p} qty={quantities.get(p.id)||0} stock={stockOf(p.id)} onAdd={addTile} onMinus={minusTile}/>)}</div>
     :<div className="ks-none"><Search size={26}/><b>{search?'Menu tidak ditemukan':'Belum ada menu yang bisa dijual'}</b><small>{search?'Coba kata kunci lain.':'Tambahkan produk atau isi stok di Inventory.'}</small></div>}
   </section>
 

@@ -2,6 +2,9 @@ import './globals.css';
 import './dark-theme.generated.css';
 import './dark-overrides.css';
 import './analisa.css';
+import './cabang.css';
+// Last on purpose: it overrides slow transitions / blur from the files above (see the header of fast.css).
+import './fast.css';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 import type { Metadata } from 'next';
 

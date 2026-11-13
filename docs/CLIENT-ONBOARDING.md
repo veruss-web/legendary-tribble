@@ -16,10 +16,12 @@
    - Password: **App Password** (akun Google → Keamanan → Verifikasi 2 langkah aktif → Sandi aplikasi). Bukan password Gmail biasa.
    - Sender email: Gmail yang sama, sender name: nama aplikasi Anda
 4. **Template email reset password** (wajib agar "Lupa password" mengirim kode, bukan link):
-   Authentication → Emails → Templates → **Reset password**.
-   - Subject: `Kode reset password Mieflow`
-   - Message body: salin seluruh isi `supabase/email-templates/recovery.html`, lalu **Save**.
-   - Isi template harus memuat `{{ .Token }}` (itulah kode 6 digitnya). Jangan menambahkan `{{ .ConfirmationURL }}`: link di email bisa dibuka otomatis oleh pemindai email (Gmail, Outlook) dan menghanguskan kode.
+   Buka https://supabase.com/dashboard/project/_/auth/templates (pilih project yang **sama** dengan `NEXT_PUBLIC_SUPABASE_URL` di Vercel), lalu tab **Reset password** (bukan Magic Link).
+   - Subject: `Kode verifikasi Mieflow`
+   - Message body: tab **Source**, hapus semua isi lama (yang berisi tombol atau link), tempel seluruh isi `supabase/email-templates/recovery.html` (desain lengkap, mendukung mode gelap) atau `recovery-compact.html` (ringkas, mudah ditempel dari HP), lalu **Save changes**.
+   - Isi email ditentukan template ini, bukan kode aplikasi. Template bawaan Supabase hanya berisi link, jadi email tetap berupa link sampai template ini diganti.
+   - Template harus memuat `{{ .Token }}` (itulah kode 6 digitnya). Jangan menambahkan `{{ .ConfirmationURL }}`: link di email bisa dibuka otomatis oleh pemindai email (Gmail, Outlook) dan menghanguskan kode.
+   - Tampilan email: logo, judul besar, kode di kartu, catatan keamanan. Gmail sendiri yang memutuskan apakah kartu **Copy code** muncul di atas email; formatnya sudah mengikuti pola standar email kode (label "Kode verifikasi" lalu kode sebagai satu angka utuh, tanpa link), tetapi tidak ada jaminan.
    - Opsional, di pengaturan provider Email: **Email OTP Expiration** (detik), mis. `600` agar kode berlaku 10 menit. Bila **Email OTP Length** diubah dari 6, ubah juga `OTP_LENGTH` di `lib/auth.ts`.
 5. Authentication → URL Configuration → **Site URL** = alamat deploy client, mis. `https://toko-budi.vercel.app`.
 
@@ -42,7 +44,9 @@ Kode berlaku sementara dan hanya sekali pakai. Tombol **Kirim ulang kode** aktif
 
 Cek bila ada kendala:
 - Email tidak datang: lihat folder Spam, lalu pastikan SMTP tersimpan dan App Password benar.
-- Email berisi link, bukan kode: template di langkah 4 belum diganti atau belum disimpan.
+- Cek dulu halaman Lupa password di website setelah menekan tombol kirim:
+  - Masih tertulis "Kirim link reset password": aplikasi belum diperbarui. Salin file baru ke repo (`app/page.tsx`, `components/auth/login.tsx`, `lib/auth.ts`, `app/globals.css`) lalu tunggu Vercel selesai deploy.
+  - Sudah muncul kotak kode, tetapi email berisi link: template di langkah 4 belum diganti, belum disimpan, diisi di tab lain (mis. Magic Link), atau di project Supabase yang berbeda dari yang dipakai aplikasi.
 - "Kode salah atau sudah kedaluwarsa": minta kode baru, lalu ketik kode yang terbaru.
 
 ## Satu Supabase untuk beberapa client (menghemat langkah 3)
